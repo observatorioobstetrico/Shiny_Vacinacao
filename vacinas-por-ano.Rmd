@@ -1,0 +1,17 @@
+---
+title: "Vacinas por ano"
+author: "OOBr COVID-19"
+date: "04/04/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+dados_vac <- readRDS(file = "dados_vac_select.rds")
+
+summarytools::ctable(dados_vac$num_dose, dados_vac$ano_aplic)
+```
+

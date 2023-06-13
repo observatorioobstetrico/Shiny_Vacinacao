@@ -1,0 +1,14 @@
+name: vacinacao-covid19
+title: vacinacao-covid19
+username:
+account: observatorioobstetricobr
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4667518
+bundleId: 5039159
+url: https://observatorioobstetricobr.shinyapps.io/vacinacao-covid19/
+when: 1631796497.14451
+lastSyncTime: 1631796497.14451
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: data_vaccines.rds|doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.pdf|doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.Rmd|doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.tex

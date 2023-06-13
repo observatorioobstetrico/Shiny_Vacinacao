@@ -1,0 +1,814 @@
+---
+title: "Análises do dados de vacinação"
+author: "Gestantes e puérperas"
+date: "`r format(Sys.time(), '%d/%B/%Y')`"
+output:
+  pdf_document:
+    toc: yes
+    number_sections: yes
+  html_document:
+    toc: yes
+    df_print: paged
+linestretch: 1.5
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Sobre a base de dados e pacotes do R utilizados
+
+ A seguir são carregados os pacotes do R (https://www.r-project.org) utilizados para filtragem e tratamento dos dados considerados no dashboard https://observatorioobstetrico.shinyapps.io/vacinacao-covid19. 
+ 
+```{r pacotes, echo=TRUE, message=FALSE, warning =FALSE,error=FALSE, results='hide'}
+#carregar pacotes
+loadlibrary <- function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = T)
+    if (!require(x, character.only = TRUE))
+      stop("Package not found")
+  }
+}
+
+packages <-
+  c(
+    "readr",
+    "readxl",
+    "janitor",
+    "dplyr",
+    "forcats",
+    "stringr",
+    "lubridate",
+    "summarytools",
+    "magrittr",
+    "questionr", 
+    "knitr", 
+    "data.table", 
+    "janitor",
+    "modelsummary"
+  )
+lapply(packages, loadlibrary)
+
+options(scipen=999)
+
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#funções que vamos usar para as medidas descritivas
+media <- function(x)
+  mean(x, na.rm = TRUE)
+mediana <- function(x)
+  median(x, na.rm = TRUE)
+DP <- function(x)
+  sd(x, na.rm = TRUE)
+minimo <- function(x)
+  base::min(x, na.rm = TRUE)
+maximo <- function(x)
+  base::max(x, na.rm = TRUE)
+q25 <- function(x)
+  stats::quantile(x, p = 0.25, na.rm = TRUE)
+q75 <- function(x)
+  stats::quantile(x, p = 0.75, na.rm = TRUE)
+IQR <- function(x)
+  round(q75(x) - q25(x), 2)
+n <- function(x)
+  sum(!is.na(x))
+faltantes <- function(x)
+  round(sum(is.na(x)), digits = 0)
+
+#dados <- read_csv("vacinacao-total-2023-04-04.csv")
+dados1 <- read.csv("vacinacao_covid_001801.csv")
+dados2 <- read.csv("vacinacao_covid_001901.csv")
+
+dados <- rbind(dados1, dados2)
+remove(dados1)
+remove(dados2)
+```
+
+Dados obtidos em https://opendatasus.saude.gov.br/dataset/covid-19-vacinacao na data de `r format(max(as.Date(dados$vacina_dataAplicacao)), "%d/%B/%Y")`. A extração dos dados é realizada por meio de consultas  à API ElasticSearch disponibilizada em https://opendatasus.saude.gov.br/dataset/covid-19-vacinacao.
+
+Além disso, visando diminuir o volume de dados retornado pelas consultas, é realizada uma pré-filtragem dos dados diretamente na API, sendo retornados apenas registros cujo campo `vacina_grupoAtendimento_codigo` seja igual a 1901 (código para puérpera) ou 1801 (código para gestante).  Essa etapa de extração foi realizada utilizando a linguagem de programação python.
+
+### Código para extração
+
+```{r eval=FALSE}
+import requests
+import json
+import time
+import http.server
+import socketserver
+import csv
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime
+
+def get_dados_vacinacao(grupoAtendimento = '001801'):
+  start_time = time.time()
+  print(f'Iniciando exportação de registros do grupo de atendimento {grupoAtendimento} 
+          as {datetime.fromtimestamp(start_time).strftime("%H:%M:%S")}')
+  total = 0
+  response = requests.post("https://imunizacao-es.saude.gov.br/_search?scroll=1m", 
+                           json={ 
+                              'size': 10000,
+                              'query': {
+                                 'bool': {
+                                    'filter': [{
+                                       'term': { 
+                                          'vacina_grupoAtendimento_codigo': grupoAtendimento 
+                                        }
+                                      }]
+                                    }
+                                  }
+                              }, 
+                           auth=('imunizacao_public', 'qlto5t&7r_@+#Tlstigi'), 
+                           headers={'Content-type': 'application/json'})
+  json_response = json.loads(response.text)
+  print(f'Total de registros a serem exportados: {json_response["hits"]["total"]["value"]}')
+  hits = [ dict(sorted(hit['_source'].items())) for hit in json_response['hits']['hits'] ]
+  csv_header = hits[0].keys()
+
+  with open(f'vacinacao_covid_{grupoAtendimento}.csv', 'w', encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=csv_header)
+    writer.writeheader()
+    writer.writerows(hits)
+
+  total += len(hits)
+  print(f'Registros exportados: {total}')
+
+  while (hits):
+    response = requests.post("https://imunizacao-es.saude.gov.br/_search/scroll", 
+                           json={ 'scroll': '1m', 'scroll_id': json.loads(response.text)['_scroll_id'] }, 
+                           auth=('imunizacao_public', 'qlto5t&7r_@+#Tlstigi'), 
+                           headers={'Content-type': 'application/json'})
+    hits = [ dict(sorted(hit['_source'].items())) for hit in json.loads(response.text)['hits']['hits'] ]
+    with open(f'vacinacao_covid_{grupoAtendimento}.csv', 'a', encoding="utf-8") as f:
+      writer = csv.DictWriter(f, fieldnames=csv_header)
+      writer.writerows(hits)
+
+    total += len(hits)
+    print(f'Registros exportados: {total}')
+    
+  print(f'Finalizando exportação de registros do grupo de atendimento {grupoAtendimento} as {time.strftime("%H:%M:%S")}')
+  print(f'Importado {total} de registros em {"{:,.2f}".format((time.time() - start_time)/60)} minutos')
+  return hits
+
+get_dados_vacinacao('001901')
+get_dados_vacinacao('001801')
+
+```
+
+
+
+```{r,echo=FALSE, eval=TRUE, message=FALSE,warning =FALSE,error=FALSE,results='hide'}
+ memory.limit(999999)
+```
+
+```{r,echo=TRUE,eval=TRUE, message=FALSE,warning =FALSE,error = FALSE, results='markeup'}
+#Criação das variáveis de data, mês e ano da aplicação
+dados <-  dados %>%
+  dplyr::mutate(
+    data_nascimento = str_sub(paciente_dataNascimento, start = 1, end = 10),
+    data_aplic = str_sub(vacina_dataAplicacao, start = 1, end = 10),
+    data_import = str_sub(data_importacao_rnds, start = 1, end = 10),
+    dt_nasc = as.Date(data_nascimento),
+    dt_aplic = as.Date(data_aplic),
+    dt_import = as.Date(data_import),
+    ano_aplic = year(dt_aplic),
+    mes_aplic = month(dt_aplic)
+  )
+
+summary(dados$dt_aplic)
+summary(dados$dt_import)
+```
+
+A data máxima de aplicação é `r max(dados$dt_aplic)` e a data máxima de importação é `r max(dados$dt_import)`.
+
+Os dados já estão filtrados `vacina_grupoAtendimento_codigo` igual a 1801  (código de gestante) ou 1901 (código de puérpera). 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados$vacina_grupoAtendimento_codigo <- as.character(dados$vacina_grupoAtendimento_codigo)
+#tabela de frequência para grupo de atendimento
+questionr::freq(
+  dados$vacina_grupoAtendimento_codigo,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para grupo de atendimento", digits = 2, format = "markdown") 
+```
+ 
+Há atualmente `r dim(dados)[1]` observações na base de dados e são as variáveis:
+ 
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+names(dados)
+```
+ 
+Veja que há também as variáveis `vacina_grupoAtendimento_nome` e `vacina_categoria_codigo` e `vacina_categoria_nome`. 
+
+
+```{r,echo=TRUE,message=FALSE,warning =FALSE,error=FALSE}
+with(
+  dados,
+  ctable(
+    vacina_grupoAtendimento_codigo,
+    vacina_grupoAtendimento_nome,
+    prop = "n"
+  )
+)
+```
+
+```{r,echo=TRUE,message=FALSE,warning =FALSE,error=FALSE}
+dados$vacina_categoria_codigo <-
+  as.character(dados$vacina_categoria_codigo)
+with(dados,
+     ctable(
+       vacina_grupoAtendimento_codigo,
+       vacina_categoria_codigo,
+       prop = "n"
+     ))
+```
+
+```{r,echo=TRUE,message=FALSE,warning =FALSE,error=FALSE}
+with(dados,
+     ctable(vacina_grupoAtendimento_codigo, vacina_categoria_nome, prop = "n"))
+```
+
+# Tratamento dos dados
+
+## Variável que indica se gestante ou puérpera
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados <- dados %>%
+  mutate(gest_puerp = ifelse(vacina_grupoAtendimento_codigo == "1801", 
+                             "gesta", 
+                             "puerp"))
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para gest_puerp
+questionr::freq(
+  dados$gest_puerp,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para gestante ou puérpera", digits = 2, format = "markdown") 
+```
+
+## Raça
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência raca/cor original
+questionr::freq(
+  dados$paciente_racaCor_codigo,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para raça/cor original", digits = 2, format = "markdown") 
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#Criando a variável de raça/cor
+dados <- dados %>%
+  mutate( 
+    raca = case_when(
+      paciente_racaCor_codigo == "1" ~ "branca",
+      paciente_racaCor_codigo == "2" ~ "preta",
+      paciente_racaCor_codigo == "3" ~ "parda",
+      paciente_racaCor_codigo == "4" ~ "amarela",
+      paciente_racaCor_codigo == "5" ~ "indigena",
+      TRUE ~ NA_character_
+    )
+  )
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência raca/cor 
+questionr::freq(
+  dados$raca,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para raça/cor", digits = 2, format = "markdown") 
+```
+
+## Idade
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#Criação da variável de idade como diferença entre data de nascimento e de aplicação
+dados <- dados %>% 
+  mutate(
+    idade_anos = as.period(interval(start = dt_nasc, end = dt_aplic))$year,
+    dif_idade = idade_anos - paciente_idade 
+  )
+
+#Descritiva da diferença da idade (base de dados) e criada pela diferença de 
+#datas de nascimento e aplicação
+datasummary((dif_idade) ~ 1*(n+faltantes+media+DP+mediana+minimo+maximo),
+            data = dados, output = 'markdown')
+```
+
+ Podemos observar que há `r sum(dados$dif_idade != 0, na.rm = TRUE)` observações com a variável original de idade (`paciente_idade`) diferente da variável criada como a diferença entre data de nascimento e de aplicação da dose. 
+ 
+## UF de aplicação
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#Criando a variável de UF de aplicação
+dados <- dados %>% 
+  mutate(
+    aplic_uf = case_when(
+      estabelecimento_uf == "" ~ NA_character_,
+      estabelecimento_uf == "XX" ~ NA_character_,
+      TRUE ~ estabelecimento_uf
+    )
+  )
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para UF aplicação
+questionr::freq(
+  dados$aplic_uf,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para UF de aplicação", digits = 2, format = "markdown") 
+```
+
+## Município de aplicação
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#Criando a variável de município (código IBGE) da aplicação
+dados <- dados %>%
+  mutate(
+    aplic_muni = ifelse(
+      is.na(estabelecimento_municipio_codigo) |
+        estabelecimento_municipio_codigo == 999999,
+      NA,
+      estabelecimento_municipio_codigo
+    )
+  )
+```
+
+## UF de residência
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#Criando a variável de UF da residência
+dados <- dados %>% 
+  mutate(
+    resid_uf = case_when(
+      paciente_endereco_uf == "" ~ NA_character_,
+      paciente_endereco_uf == "XX" ~ NA_character_,
+      paciente_endereco_uf == "None" ~ NA_character_,
+      TRUE ~ paciente_endereco_uf
+    )
+  )
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para UF residência
+questionr::freq(
+  dados$resid_uf,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para UF de residência", digits = 2, format = "markdown") 
+```
+
+Podemos observar que há `r sum(is.na(dados$resid_uf))` `NA` (dados faltantes) para UF de residência. Vamos verificar a distribuição de dados faltantes da UF de residência por UF de aplicação:
+
+```{r,echo=TRUE,message=FALSE,warning =FALSE,error=FALSE}
+#criação do indicador de missing para UF de residência
+dados <- dados %>% 
+  mutate(indic_na_uf_resid = ifelse(is.na(resid_uf), "sim", "não"))
+
+with(dados, ctable(aplic_uf, indic_na_uf_resid, prop = "r"))
+```
+
+## Município de residência
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#Criando a variável de município (código IBGE) da residência
+dados <- dados %>%
+  mutate(
+    resid_muni = ifelse(
+      is.na(paciente_endereco_coIbgeMunicipio) |
+        paciente_endereco_coIbgeMunicipio == 999999,
+      NA,
+      paciente_endereco_coIbgeMunicipio
+    )
+  )
+```
+
+## Qual vacina aplicada
+
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para vacina_nome
+questionr::freq(
+  dados$vacina_nome,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para vacina nome (original)", digits = 2, format = "markdown") 
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados$id <- 1:dim(dados)[1]
+#Criando a variável de qual vacina aplicada
+dados <- dados %>%
+  mutate(
+    qual_vacina = case_when(
+      vacina_nome == "COVID-19 PFIZER - COMIRNATY BIVALENTE" ~ "Bivalente",
+      id %in% str_which(vacina_nome, "AstraZeneca") ~ "AstraZeneca",
+      id %in% str_which(vacina_nome, "ASTRA") ~ "AstraZeneca",
+      id %in% str_which(vacina_nome, "Coronavac") ~ "Coronavac",
+      id %in% str_which(vacina_nome, "CORONAVAC") ~ "Coronavac",
+      id %in% str_which(vacina_nome, "JANSSEN") ~ "Janssen",
+      id %in% str_which(vacina_nome, "PFIZER") ~ "Pfizer",
+      id %in% str_which(vacina_nome, "Pfizer") ~ "Pfizer",
+      id %in% str_which(vacina_nome, "Covishield") ~ "Covishield",
+      vacina_nome == "" ~ NA_character_,
+      vacina_nome  == "Pendente Identificação" ~ NA_character_,
+      vacina_nome  == "Pendente IdentificaÃ§Ã£o" ~ NA_character_,
+      vacina_nome  == "INF3" ~ NA_character_,
+      TRUE ~ vacina_nome
+      # vacina_nome == "Vacina covid-19 - Ad26.COV2.S - Janssen-Cilag" ~ "Janssen",
+      # vacina_nome == "Covid-19-AstraZeneca" ~ "AstraZeneca",
+      # vacina_nome == "Covid-19-Coronavac-Sinovac/Butantan" ~ "Coronavac",
+      # vacina_nome == "Vacina covid-19 - BNT162b2 - BioNTech/Fosun Pharma/Pfizer" ~ "Pfizer",
+      # vacina_nome == "Vacina Covid-19 - Covishield" ~ "Covishield",
+      # vacina_nome == "" ~ NA_character_,
+      # vacina_nome  == "Pendente Identificação" ~ NA_character_,
+      # vacina_nome  == "Pendente IdentificaÃ§Ã£o" ~ NA_character_,
+      # TRUE ~ vacina_nome
+    )
+  )
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para qual_vacina
+questionr::freq(
+  dados$qual_vacina,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para qual vacina", digits = 2, format = "markdown") 
+```
+
+## Qual dose
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para vacina_descricao_dose
+questionr::freq(
+  dados$vacina_descricao_dose,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para qual dose", digits = 2, format = "markdown") 
+```
+
+Vamos analisar a seguir o cruzamento dos dados de qual vacina aplicada com a descrição da dose.
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela cruzada de qual dose e qual vacina
+with(dados, table(qual_vacina,vacina_descricao_dose))
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE, include=FALSE}
+# dados <- dados %>%
+#   mutate(
+#     num_dose = case_when(
+#       id %in% str_which(vacina_descricao_dose, "1ª") ~ "1a dose",
+#       id %in% str_which(vacina_descricao_dose, "1ª") ~ "1a dose",
+#       id %in% str_which(vacina_descricao_dose, "2ª") ~ "2a dose",
+#       id %in% str_which(vacina_descricao_dose, "nica") ~ "dose unica",
+#       id %in% str_which(vacina_descricao_dose, "Única") ~ "dose unica",
+#       id %in% str_which(vacina_descricao_dose, "DoseÂ") ~ "dose unica",
+#       id %in% str_which(vacina_descricao_dose, "Adicional") ~ "dose adicional",
+#       id %in% str_which(vacina_descricao_dose, "DoseAdicional") ~ "dose adicional",
+#       vacina_descricao_dose ==  "Dose" ~ "dose unica",
+#       id %in% str_which(vacina_descricao_dose, "3ª") ~ "dose adicional",
+#       id %in% str_which(vacina_descricao_dose, "Reforço") ~ "dose adicional"
+#     )
+#   )
+# 
+# dados <- dados %>%
+#   mutate(num_dose = case_when(
+#     qual_vacina == "Janssen" & num_dose == "1a dose" ~ "dose unica",
+#     TRUE ~ num_dose
+#   ))
+```
+
+Vamos fazer agora a junção de informações que se referem a mesma dose de vacina.
+
+```{r}
+dados <- dados %>%
+  mutate(
+    num_dose = case_when(
+      vacina_descricao_dose == "1ª Dose"  ~ "1a dose",
+      vacina_descricao_dose == "2ª Dose"~ "2a dose",
+      vacina_descricao_dose == "3ª Dose" ~ "3a dose",
+      vacina_descricao_dose == "4ª Dose" ~ "4a dose",
+      (vacina_descricao_dose == "1º Reforço" |
+        vacina_descricao_dose == "Dose Adicional") |
+        vacina_descricao_dose == "Reforço" ~ "Dose adicional + 1º reforço + reforço",
+      vacina_descricao_dose == "Dose" |
+        vacina_descricao_dose == "Única" ~ "Dose+Única",
+      TRUE ~ as.character(vacina_descricao_dose)
+    )
+  )
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela cruzada de qual dose e qual vacina
+with(dados, table(qual_vacina, num_dose))
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados_bruto <- dados %>% 
+  select(paciente_id, resid_muni = paciente_endereco_nmMunicipio, 
+         aplicacao_muni = estabelecimento_municipio_nome, 
+         dt_nasc, dt_aplic, dt_import, ano_aplic, 
+         mes_aplic, aplic_uf, gest_puerp, idade_anos, 
+         raca, resid_uf, qual_vacina, num_dose,
+         sexo = paciente_enumSexoBiologico
+  )
+
+saveRDS(dados_bruto, "dados_vac_select_bruto.rds")
+```
+
+Há na base de dados `r dim(dados)[1]` observações. 
+
+## Sobre tempo entre aplicação e importação no RNDS
+
+A variável `vacina_dataAplicacao` indica a data de aplicação da vacina e a variável `data_importacao_rnds` não está no dicionário, mas estamos entendendo como a data da importação na RNDS (Rede Nacional de Dados em Saúde). Vamos analisar o tempo entre a data da aplicação e a data da importação no sistema. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+# tempo_rnds_aplic: tempo entre aplicação e importação no RNDS
+dados <- dados %>% 
+  mutate(
+    tempo_rnds_aplic = as.numeric(dt_import - dt_aplic),
+  )  
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tempos negativos (data a importação anterior à data da aplicação)
+ sum(dados$tempo_rnds_aplic<0) 
+```
+
+Podemos observar que há `r sum(dados$tempo_rnds_aplic<0)` casos inconsistentes, em que a data da importação é anterior à data da aplicação. 
+
+Segue a distribuição por estado de aplicação com relação ao indicador de tempo negativo:
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados <- dados %>%
+  mutate(indic_tempo_neg = ifelse(
+    is.na(tempo_rnds_aplic),
+    NA,
+    ifelse(tempo_rnds_aplic < 0, "sim", "não")
+  ))
+
+with(dados, ctable(aplic_uf, indic_tempo_neg, prop = "n"))
+```
+
+E por UF de residência:
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+with(dados,ctable(resid_uf,indic_tempo_neg, prop="n"))
+```
+
+Se filtrarmos apenas os casos com tempo positivo, temos as seguintes medidas descritivas do tempo de atraso de importação por UF de aplicação:
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados_tempo_pos <- dados %>% 
+  filter(tempo_rnds_aplic >= 0)
+
+datasummary((aplic_uf) ~ tempo_rnds_aplic*(n+faltantes+media+DP+mediana+minimo+maximo),
+            data = dados_tempo_pos, output = 'markdown')
+```
+
+E por UF de residência:
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+datasummary((resid_uf) ~ tempo_rnds_aplic*(n+faltantes+media+DP+mediana+minimo+maximo),
+            data = dados_tempo_pos, output = 'markdown')
+```
+
+# Exclusão dos casos inconsistentes
+
+## Dados com status "entered-in-error"
+
+Há na base de dados a variável `status` que tem as categorias "entered-in-error" e "final". Quando `status`  é "entered-in-error", a variável `dt_deleted` informa uma data (caso contrário, o campo é vazio). 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para status
+questionr::freq(
+  dados$status,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para status", digits = 2, format = "markdown") 
+```
+
+Vamos excluir os casos "entered-in-error" por entender que esses casos foram identificados com algum erro e não deveriam ser considerados na base de dados. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados1 <- dados %>% 
+  filter(status != "entered-in-error")
+```
+
+```{r, echo=FALSE, eval= FALSE, message=FALSE, warning =FALSE, error=FALSE}
+#avaliando se todos os casos de error estão nos dados finais
+dados_error <- dados %>% 
+  filter(status == "entered-in-error")
+  
+dados_final <- dados %>% 
+  filter(status == "final")
+  
+dim(dados_error)[1]
+sum(dados_error$paciente_id %in% dados_final$paciente_id)
+```
+
+
+## ID do paciente que se repete para um mesmo número de dose e para o mesmo estabelecimento de saúde 
+
+Há na bases de dados a coluna `paciente_id`. Vamos agora identificar os casos duplicados com relação à combinação paciente_id, data de nascimento, estabelecimento_valor (pensando na hipótese de poder repetir o paciente_id entre os estabelecimentos) e vacina_descricao_dose (número da dose). 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados_dup_id <- janitor::get_dupes(dados1, paciente_id, dt_nasc, estabelecimento_valor, vacina_descricao_dose)
+dim(dados_dup_id)[1]
+
+```
+
+Podemos observar que há `r dim(dados_dup_id)[1]` observações duplicadas (observações que não são únicas). Vamos filtrar então só os casos únicos de combinação de paciente_id,  data de nascimento, estabelecimento_valor e vacina_descricao_dose (número da dose). 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados2 <-
+  dplyr::distinct(dados1,
+                  paciente_id,
+                  dt_nasc,
+                  estabelecimento_valor,
+                  vacina_descricao_dose,
+                  .keep_all = TRUE)
+```
+
+Ficamos agora com `r dim(dados2)[1]` observações. 
+
+## Ano de aplicação da vacina 
+
+Agora vamos analisar a data da aplicação da vacina. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+# with(dados2, ctable(mes_aplic, ano_aplic, round.digits = 0))
+```
+
+Veja que há `r dim(dados2[dados2$ano_aplic == 2020,])[1]` casos com data de aplicação em 2020 e `r dim(dados2[dados2$ano_aplic == 2019,])[1]` em 2019. 
+
+No que segue vamos excluir esses casos de vacinação em 2019 e 2020. 
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+# vamos excluir os casos de vacinação em 2020 e em 2019
+dados3 <- dados2 %>% 
+  filter(ano_aplic %in% c(2021, 2022, 2023))
+```
+
+Ficamos agora com `r dim(dados3)[1]` observações. 
+
+A variável que indica o sexo biológico é `paciente_enumSexoBiologico`. Vamos avaliar a frequência desta variável. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE, fig.show='hold'}
+#tabela de frequência para sexo
+questionr::freq(
+  dados3$paciente_enumSexoBiologico,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para variável 
+        sexo", digits = 2, format = "markdown") 
+```
+
+Note que há `r dim(dados3[dados3$paciente_enumSexoBiologico != "F",])[1]` observações que não são sexo biológico feminino. 
+
+No que segue vamos excluir esses casos. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+# vamos excluir os casos de sexo biológico não feminino
+dados4 <- dados3 %>%
+  filter(paciente_enumSexoBiologico == "F")
+```
+
+Ficamos agora com `r dim(dados4)[1]` observações. 
+
+A próxima seleção é avaliar a idade das gestantes. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#medidas descritivsa da idade
+datasummary((idade_anos) ~ 1 * (n + faltantes + media + DP + mediana + minimo +
+                                  maximo),
+            data = dados4,
+            output = 'markdown'
+)
+```
+
+Além da idade apresentada de forma quantitativa, podemos criar uma idade em categorias: até 9 anos, de 10 até 55 e maior que 55 anos. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados4 <- dados4 %>%
+  mutate(
+    idade_cat = case_when(
+      idade_anos < 10 ~ "< 10 anos",
+      idade_anos >= 10 & idade_anos <= 55 ~ "de 10 a 55 anos",
+      TRUE ~ "> 55 anos"
+    )
+  )
+```
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para categoria de idade
+questionr::freq(
+  dados4$idade_cat,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para categoria de idade", digits = 2, format = "markdown") 
+```
+
+Vamos filtrar de 10 a 55 anos no que segue. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+# vamos excluir os casos <10 e >55 anos
+dados5 <- dados4 %>%
+  filter(idade_anos >= 10 & idade_anos <= 55)
+```
+
+Com essas seleções ficamos com `r dim(dados5)[1]` observações. 
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+#tabela de frequência para grupo de atendimento
+questionr::freq(
+  dados5$gest_puerp,
+  cum = FALSE,
+  total = TRUE,
+  na.last = TRUE,
+  valid = TRUE
+) %>%
+  kable(caption = "Tabela de frequências para grupo de atendimento", digits = 2, format = "markdown") 
+```
+
+Por fim, no total, excluímos `r dim(dados)[1]-dim(dados5)[1]` observações que identificamos todas as inconsistências anteriormente descritas.  
+
+Apresentamos agora a distribuição das vacinas por UF de aplicação:
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+with(dados5, ctable(aplic_uf, num_dose, prop="n"))
+```
+
+Apresentamos agora a distribuição das vacinas por UF de residência:
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+with(dados5, ctable(resid_uf, num_dose, prop="n"))
+```
+
+
+```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+dados6 <- dados5 %>%
+  select(
+    paciente_id,
+    dt_nasc,
+    dt_aplic,
+    dt_import,
+    ano_aplic,
+    mes_aplic,
+    gest_puerp,
+    idade_anos,
+    raca,
+    resid_uf,
+    resid_muni,
+    paciente_endereco_nmMunicipio,
+    qual_vacina,
+    num_dose,
+    aplic_uf,
+    aplic_muni,
+    aplicacao_muni = estabelecimento_municipio_nome
+  )
+
+saveRDS(dados6, file = "dados_vac_select.rds")
+```
+

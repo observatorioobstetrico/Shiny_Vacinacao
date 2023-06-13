@@ -1,0 +1,13 @@
+name: shiny_vacinacao
+title: shiny_vacinacao
+username:
+account: observatorioobstetrico
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9112418
+bundleId: 7220789
+url: https://observatorioobstetrico.shinyapps.io/shiny_vacinacao/
+when: 1684169458.76452
+lastSyncTime: 1684169458.76453
+asMultiple: FALSE
+asStatic: FALSE

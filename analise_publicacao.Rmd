@@ -1,0 +1,44 @@
+---
+title: "Raça e vacinação"
+author: "OOBr COVID-19"
+date: "16/11/2021"
+output: html_document
+---
+
+# Introdução
+
+Essa análise tem como objetivo analisar como está sendo a distribuição de vacinações entre gestantes e puérperas por raça. Os dados são obtidos em https://opendatasus.saude.gov.br/dataset/covid-19-vacinacao na data de 10/novembro/2021. A extração dos dados é realizada por meio de consultas  à API ElasticSearch disponibilizada em https://opendatasus.saude.gov.br/dataset/covid-19-vacinacao.
+
+Além disso, visando diminuir o volume de dados retornado pelas consultas, é realizada uma pré-filtragem dos dados diretamente na API, sendo retornados apenas registros cujo campo `vacina_grupoAtendimento_codigo` seja igual a 1901 (código para puérpera) ou 1801 (código para gestante).  Essa etapa de extração foi realizada por meio de nossa parceira PCDaS (https://pcdas.icict.fiocruz.br/).
+
+## Dados tratados
+
+Nos dados tratados foi mantido na base de dados somente observações que eram consistentes, ou seja, gestantes e puérperas entre 10 e 55 anos, sexo feminino e vacinação em 2021. Qualquer observação que fugisse dessas característticas foi descartada da análise. 
+
+### Tabela cruzada
+
+```{r, message=FALSE}
+library(tidyverse)
+
+dados_tratados <- readRDS("dados_vac_select.rds")
+
+str(dados_tratados)
+
+attach(dados_tratados) #criminoso contra a memória mas só foi assim
+
+summarytools::ctable(raca, num_dose)
+```
+
+### Gráfico
+
+```{r fig.align='center'}
+p1 <- ggplot(dados_tratados, aes(x = num_dose)) +
+  geom_bar(aes(fill = raca), position = "dodge") +
+  scale_fill_viridis_d(na.value = "gray50") +
+  labs(x = "Tipo de dose") +
+  theme_bw()
+
+plotly::ggplotly(p1)
+```
+
+

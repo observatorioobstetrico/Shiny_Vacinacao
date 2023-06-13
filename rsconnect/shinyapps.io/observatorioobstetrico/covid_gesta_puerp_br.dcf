@@ -1,0 +1,14 @@
+name: covid_gesta_puerp_br
+title: covid_gesta_puerp_br
+username:
+account: observatorioobstetrico
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3920787
+bundleId: 5037864
+url: https://observatorioobstetrico.shinyapps.io/covid_gesta_puerp_br/
+when: 1631757794.43292
+lastSyncTime: 1631757794.43292
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: analises_destaque_OOBrCOVID-19.pdf|analises_destaque_OOBrCOVID-19.Rmd|analises_destaque_OOBrCOVID-19.tex|dados_estados_porCovid.xlsx|data_vaccines.rds|doc_covid_gesta_puerp_OOBrCOVID-19.pdf|doc_covid_gesta_puerp_OOBrCOVID-19.Rmd|doc_covid_gesta_puerp_OOBrCOVID-19.tex|doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.pdf|doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.Rmd|doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.tex|INFLUD-13-09-2021.csv|INFLUD21-13-09-2021.csv|LEIA-ME.txt|mapa_estados.html|mapa_estados.Rmd
