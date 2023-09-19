@@ -1,0 +1,42 @@
+﻿Tutorial atualização painel vacinação 
+
+
+Antes de tudo você deve fazer o download do arquivo shiny em seu computador. Atualmente ele pode ser encontrado  no github do observatório. Também está no drive. É provável que o github contenha a versão mais atualizada do código.
+Faça o download e obtenha a pasta em seu computador. 
+
+
+Obter os dados 
+
+
+Atualmente os dados estão sendo obtidos através de uma api, código em python. Uma sugestão é rodar esse código no vscode.  Pode ser que você precise de alguns passos além dos aqui descritos, como, por exemplo, instalar a linguagem python no vscode. Mas isso é simples e intuitivo. Geralmente o próprio vscode sugere o que você precisa instalar.
+
+
+Tutorial utilizando o vscode
+
+
+1. Neste link está uma pasta chamada api python. Você irá encontrar dois arquivos, onde um é para a instalação dos pacotes (confira se estão certos e se não está faltando nenhum) e o outro é o próprio código. O primeiro passo é rodar o código para instalar os pacotes. 
+2. O segundo passo é executar e depurar a api, não precisa alterar nada. O código exibe quantos arquivos serão exportados, e mostra em qual etapa está.
+3. Após o término você terá duas bases de dados (uma para gestante e outra para puérperas). Copie e cole as bases de dados dentro da sua pasta do painel.
+
+
+
+
+
+
+Atualizar painel
+
+
+
+
+1. Com as duas bases de dados dentro da pasta do painel, o primeiro passo é abrir  o arquivo doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.Rmd, e rodar o arquivo. Note que já nos primeiros códigos ele importa as duas bases e faz a junção delas por meio da função rbind()
+
+
+2. O script irá gerar um arquivo pdf chamado doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19, o mesmo nome do script. recortar este pdf e colar na pasta WWW. Vamos para o painel.
+
+
+3. O arquivo app contém o código shiny, dentro dele apenas será preciso atualizar duas datas. 
+Primeiro procurar o texto Dados de Vacinação atualizados em dd/mm/yyyy. Para maiores informações, ver 'Documentação'. e atualizar com a data dos dados. 
+Depois o texto A última atualização foi realizada em dd/mm/yyyy (dados atualizados pelo MS do dia anterior)  e atualizar com a data de atualização do painel. 
+
+
+Pronto, agora é só publicar o painel clickando no botão republish.
