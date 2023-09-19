@@ -5,10 +5,10 @@ account: observatorioobstetrico
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 4667454
-bundleId: 7318606
+bundleId: 7671763
 url: https://observatorioobstetrico.shinyapps.io/vacinacao-covid19/
-when: 1686181909.82965
-lastSyncTime: 1686181909.82966
+when: 1694470143.62996
+lastSyncTime: 1694470143.62997
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: analise_publicacao.html|analise_publicacao.Rmd|doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.html|doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.Rmd|INSTRUCOES.txt

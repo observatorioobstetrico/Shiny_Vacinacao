@@ -1,0 +1,16 @@
+Atualização OOBr COVID-19:
+
+1) Baixar a base de dados mais atual em https://drive.google.com/drive/folders/1hR889-M3Dc7UMFkLxzLLmLPcnUJKceHn?usp=sharing
+A base de dados com a data mais recente e deve conter a palavra "total" no título. Exemplo: vacinacao-total-2021-11-01.zip
+
+2) Descompactar a base e copiar o artigo em .csv e apagar o anterior
+
+3) Abrir o arquivo "doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.rmd" - MUDAR O NOME DO .csv PARA O QUE SALVOU NO PASSO 2 - rodar em pdf (Knit TO PDF). 
+
+4) Colocar o "doc_vacinacao_covid-Gesta-Puerp_OOBrCOVID-19.pdf" atualizado na pasta 'www'
+
+5) Atualizar o app - mudar as datas do dia da atualização (em Início e em Documentação)
+
+6) Fazer o Deploy - replace em "vacinacao-covid19"
+
+

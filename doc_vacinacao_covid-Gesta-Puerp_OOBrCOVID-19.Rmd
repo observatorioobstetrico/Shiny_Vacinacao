@@ -125,7 +125,7 @@ def get_dados_vacinacao(grupoAtendimento = '001801'):
                            headers={'Content-type': 'application/json'})
   json_response = json.loads(response.text)
   print(f'Total de registros a serem exportados: {json_response["hits"]["total"]["value"]}')
-  hits = [ dict(sorted(hit['_source'].items())) for hit in json_response['hits']['hits'] ]
+  hits = [ dict(sorted(hit['_source'].items())) for hit in json_response['hits']['hits']]
   csv_header = hits[0].keys()
 
   with open(f'vacinacao_covid_{grupoAtendimento}.csv', 'w', encoding="utf-8") as f:
@@ -138,10 +138,10 @@ def get_dados_vacinacao(grupoAtendimento = '001801'):
 
   while (hits):
     response = requests.post("https://imunizacao-es.saude.gov.br/_search/scroll", 
-                           json={ 'scroll': '1m', 'scroll_id': json.loads(response.text)['_scroll_id'] }, 
+                           json={ 'scroll': '1m', 'scroll_id': json.loads(response.text)['_scroll_id']}, 
                            auth=('imunizacao_public', 'qlto5t&7r_@+#Tlstigi'), 
                            headers={'Content-type': 'application/json'})
-    hits = [ dict(sorted(hit['_source'].items())) for hit in json.loads(response.text)['hits']['hits'] ]
+    hits = [ dict(sorted(hit['_source'].items())) for hit in json.loads(response.text)['hits']['hits']]
     with open(f'vacinacao_covid_{grupoAtendimento}.csv', 'a', encoding="utf-8") as f:
       writer = csv.DictWriter(f, fieldnames=csv_header)
       writer.writerows(hits)
@@ -196,7 +196,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para grupo de atendimento", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para grupo de atendimento", 
+        digits = 2, format = "markdown") 
 ```
  
 Há atualmente `r dim(dados)[1]` observações na base de dados e são as variáveis:
@@ -254,7 +255,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para gestante ou puérpera", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para gestante ou puérpera", 
+        digits = 2, format = "markdown") 
 ```
 
 ## Raça
@@ -268,7 +270,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para raça/cor original", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para raça/cor original", 
+        digits = 2, format = "markdown") 
 ```
 
 ```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
@@ -295,7 +298,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para raça/cor", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para raça/cor", 
+        digits = 2, format = "markdown") 
 ```
 
 ## Idade
@@ -339,7 +343,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para UF de aplicação", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para UF de aplicação", 
+        digits = 2, format = "markdown") 
 ```
 
 ## Município de aplicação
@@ -381,7 +386,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para UF de residência", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para UF de residência", 
+        digits = 2, format = "markdown") 
 ```
 
 Podemos observar que há `r sum(is.na(dados$resid_uf))` `NA` (dados faltantes) para UF de residência. Vamos verificar a distribuição de dados faltantes da UF de residência por UF de aplicação:
@@ -421,7 +427,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para vacina nome (original)", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para vacina nome (original)", 
+        digits = 2, format = "markdown") 
 ```
 
 ```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
@@ -466,7 +473,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para qual vacina", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para qual vacina", 
+        digits = 2, format = "markdown") 
 ```
 
 ## Qual dose
@@ -480,7 +488,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para qual dose", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para qual dose", 
+        digits = 2, format = "markdown") 
 ```
 
 Vamos analisar a seguir o cruzamento dos dados de qual vacina aplicada com a descrição da dose.
@@ -623,7 +632,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para status", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para status", 
+        digits = 2, format = "markdown") 
 ```
 
 Vamos excluir os casos "entered-in-error" por entender que esses casos foram identificados com algum erro e não deveriam ser considerados na base de dados. 
@@ -651,7 +661,8 @@ sum(dados_error$paciente_id %in% dados_final$paciente_id)
 Há na bases de dados a coluna `paciente_id`. Vamos agora identificar os casos duplicados com relação à combinação paciente_id, data de nascimento, estabelecimento_valor (pensando na hipótese de poder repetir o paciente_id entre os estabelecimentos) e vacina_descricao_dose (número da dose). 
 
 ```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
-dados_dup_id <- janitor::get_dupes(dados1, paciente_id, dt_nasc, estabelecimento_valor, vacina_descricao_dose)
+dados_dup_id <- janitor::get_dupes(dados1, paciente_id, dt_nasc, 
+                                   estabelecimento_valor, vacina_descricao_dose)
 dim(dados_dup_id)[1]
 
 ```
@@ -749,7 +760,8 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para categoria de idade", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para categoria de idade", 
+        digits = 2, format = "markdown") 
 ```
 
 Vamos filtrar de 10 a 55 anos no que segue. 
@@ -771,19 +783,23 @@ questionr::freq(
   na.last = TRUE,
   valid = TRUE
 ) %>%
-  kable(caption = "Tabela de frequências para grupo de atendimento", digits = 2, format = "markdown") 
+  kable(caption = "Tabela de frequências para grupo de atendimento", 
+        digits = 2, format = "markdown") 
 ```
 
 Por fim, no total, excluímos `r dim(dados)[1]-dim(dados5)[1]` observações que identificamos todas as inconsistências anteriormente descritas.  
 
 Apresentamos agora a distribuição das vacinas por UF de aplicação:
 ```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+
 with(dados5, ctable(aplic_uf, num_dose, prop="n"))
 ```
 
 Apresentamos agora a distribuição das vacinas por UF de residência:
 ```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
+
 with(dados5, ctable(resid_uf, num_dose, prop="n"))
+
 ```
 
 

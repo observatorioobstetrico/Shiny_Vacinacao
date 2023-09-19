@@ -179,14 +179,13 @@ n <- function(x)
 
 ## Vacinação em Municipios ----
 dados_vac_muni <-
-  function(mes1 =  5,
-           mes2 = 7,
+  function(mes1 =  1,
+           mes2 = 12,
            grupo = c("gesta", "puerp"),
            idade1 = 10,
            idade2 = 55,
-           vacina = c("AstraZeneca",
-                      "Coronavac", "Covishield", "Janssen", "Pfizer"),
-           raca_cor = c("amarela", "branca", "indigena", "parda", "preta")) {
+           vacina = c("AstraZeneca", "Bivalente", "Coronavac", "Sem informação", "Janssen", "Pfizer"),
+           raca_cor = c("amarela", "branca", "indigena", "parda", "preta", "não informado")) {
     vac_muni <- dados_vac %>%
       dplyr::filter(
         mes_aplic >= mes1 & mes_aplic <= mes2,
@@ -289,14 +288,13 @@ dados_vac_muni <-
 
 ## Vacinação em Estados ----
 dados_vac_est <-
-  function(mes1 =  5,
-           mes2 = 7,
+  function(mes1 =  1,
+           mes2 = 12,
            grupo = c("gesta", "puerp"),
            idade1 = 10,
            idade2 = 55,
-           vacina = c("AstraZeneca",
-                      "Coronavac", "Covishield", "Janssen", "Pfizer"),
-           raca_cor = c("amarela", "branca", "indigena", "parda", "preta")) {
+           vacina = c("AstraZeneca", "Bivalente","Coronavac", "Sem informação", "Janssen", "Pfizer"),
+           raca_cor = c("amarela", "branca", "indigena", "parda", "preta", "não informado")) {
     vac_est <- dados_vac %>%
       dplyr::filter(
         mes_aplic >= mes1 & mes_aplic <= mes2,
@@ -421,9 +419,9 @@ n <- function(x)
 faltantes <- function(x)
   round(sum(is.na(x)), digits = 0)
 # Inscrição para Newsletter ----
-gs4_auth(cache = ".secrets",
-         email = TRUE,
-         use_oob = TRUE)
+# gs4_auth(cache = ".secrets",
+#          email = TRUE,
+#          use_oob = TRUE)
 
 # which fields get saved
 fieldsAll <- c("nome", "email")
@@ -474,7 +472,7 @@ appCSS <-
   "
 
 # info for sharing this app on facebook/twitter
-share <- list(title = "Inscrição na Newsletter")
+#share <- list(title = "Inscrição na Newsletter")
 
 # User Interface ----
 ui <-
@@ -591,7 +589,7 @@ ui <-
             )
           ),
           strong(
-            "Dados de Vacinação atualizados em 06/junho/2023. Para maiores informações, ver 'Documentação'."
+            "Dados de Vacinação atualizados em 10/setembro/2023. Para maiores informações, ver 'Documentação'."
           ),
           h1(strong("Quem somos")),
           p(
@@ -730,36 +728,36 @@ ui <-
         )
       )
       ),
-        ### Item Newsletter ----
-        tabItem(
-          shinyjs::useShinyjs(),
-          shinyjs::inlineCSS(appCSS),
-          tabName = "newsletter",
-          fluidRow(column(
-            6,
-            div(
-              id = "form",
-              textInput("nome", labelMandatory("Nome"), ""),
-              textInput("email", labelMandatory("Email")),
-              actionButton("submit", "Inscreva-se", class = "btn-primary"),
-
-              shinyjs::hidden(span(id = "submit_msg", "Submetendo..."),
-                              div(id = "error",
-                                  div(
-                                    br(), tags$b("Erro: "), span(id = "error_msg")
-                                  )))
-            ),
-
-            shinyjs::hidden(div(
-              id = "thankyou_msg",
-              h3("Obrigada, sua inscrição foi enviada!")#,
-              # actionLink("submit_another", "Submit another response")
-            ))
-          )
-          # column(6,
-          #        uiOutput("adminPanelContainer")
-          # ))
-          )),
+        # ### Item Newsletter ----
+        # tabItem(
+        #   shinyjs::useShinyjs(),
+        #   shinyjs::inlineCSS(appCSS),
+        #   tabName = "newsletter",
+        #   fluidRow(column(
+        #     6,
+        #     div(
+        #       id = "form",
+        #       textInput("nome", labelMandatory("Nome"), ""),
+        #       textInput("email", labelMandatory("Email")),
+        #       actionButton("submit", "Inscreva-se", class = "btn-primary"),
+        #
+        #       shinyjs::hidden(span(id = "submit_msg", "Submetendo..."),
+        #                       div(id = "error",
+        #                           div(
+        #                             br(), tags$b("Erro: "), span(id = "error_msg")
+        #                           )))
+        #     ),
+        #
+        #     shinyjs::hidden(div(
+        #       id = "thankyou_msg",
+        #       h3("Obrigada, sua inscrição foi enviada!")#,
+        #       # actionLink("submit_another", "Submit another response")
+        #     ))
+        #   )
+        #   # column(6,
+        #   #        uiOutput("adminPanelContainer")
+        #   # ))
+        #   )),
         ### Item Documentação ----
         tabItem(
           tabName = "doc",
@@ -783,8 +781,15 @@ ui <-
           br(),
           br(),
           (
-            "A última atualização foi realizada em 07/junho/2023 (dados atualizados pelo MS do dia anterior)."
+            "A última atualização foi realizada em 11/setembro/2023 (dados atualizados pelo MS do dia anterior)."
           ),
+          br(),
+          br(),
+          # (
+          #   "Acesso a pasta no drive contendo as bases utilizadas na última atualização do painel"
+          # ),
+          # a("neste link.", href = "https://drive.google.com/drive/folders/1s_m9njVZhjJpeemSBixkcys_sOr0Mkt-?usp=sharing"),
+
           br(),
           br(),
           p(
@@ -807,7 +812,7 @@ ui <-
             "Como baixar os dados desse painel:"
           ),
           (
-            "Rodrigues, A. S.; Francisco, R. P. V. Vacinação contra COVID-19 em
+            "Neto, P. B.; Rodrigues, A. S.; Francisco, R. P. V. Vacinação contra COVID-19 em
             gestantes e puérperas [banco de dados], 2021, Observatório Obstétrico Brasileiro (OOBr)."
           ),
           ("Disponível em DOI:"),
@@ -1364,58 +1369,58 @@ server <- function(input, output, session) {
 
   ### Para inscrição na Newsletter ----
   # Enable the Submit button when all mandatory fields are filled out
-  observe({
-    mandatoryFilled <-
-      vapply(fieldsMandatory,
-             function(x) {
-               !is.null(input[[x]]) && input[[x]] != ""
-             },
-             logical(1))
-    mandatoryFilled <- all(mandatoryFilled)
-
-    shinyjs::toggleState(id = "submit", condition = mandatoryFilled)
-  })
-
-  # Gather all the form inputs (and add timestamp)
-  formData <- reactive({
-    data <- sapply(fieldsAll, function(x)
-      input[[x]])
-    data <- c(data, timestamp = humanTime())
-    data <- t(data)
-    data
-  })
-
-  # When the Submit button is clicked, submit the response
-  observeEvent(input$submit, {
-    # User-experience stuff
-    shinyjs::disable("submit")
-    shinyjs::show("submit_msg")
-    shinyjs::hide("error")
-
-    # Save the data (show an error message in case of error)
-    tryCatch({
-      saveData(formData())
-      shinyjs::reset("form")
-      shinyjs::hide("form")
-      shinyjs::show("thankyou_msg")
-    },
-    error = function(err) {
-      shinyjs::html("error_msg", err$message)
-      shinyjs::show(id = "error",
-                    anim = TRUE,
-                    animType = "fade")
-    },
-    finally = {
-      shinyjs::enable("submit")
-      shinyjs::hide("submit_msg")
-    })
-  })
-
-  # submit another response
-  observeEvent(input$submit_another, {
-    shinyjs::show("form")
-    shinyjs::hide("thankyou_msg")
-  })
+  # observe({
+  #   mandatoryFilled <-
+  #     vapply(fieldsMandatory,
+  #            function(x) {
+  #              !is.null(input[[x]]) && input[[x]] != ""
+  #            },
+  #            logical(1))
+  #   mandatoryFilled <- all(mandatoryFilled)
+  #
+  #   shinyjs::toggleState(id = "submit", condition = mandatoryFilled)
+  # })
+  #
+  # # Gather all the form inputs (and add timestamp)
+  # formData <- reactive({
+  #   data <- sapply(fieldsAll, function(x)
+  #     input[[x]])
+  #   data <- c(data, timestamp = humanTime())
+  #   data <- t(data)
+  #   data
+  # })
+  #
+  # # When the Submit button is clicked, submit the response
+  # observeEvent(input$submit, {
+  #   # User-experience stuff
+  #   shinyjs::disable("submit")
+  #   shinyjs::show("submit_msg")
+  #   shinyjs::hide("error")
+  #
+  #   # Save the data (show an error message in case of error)
+  #   tryCatch({
+  #     saveData(formData())
+  #     shinyjs::reset("form")
+  #     shinyjs::hide("form")
+  #     shinyjs::show("thankyou_msg")
+  #   },
+  #   error = function(err) {
+  #     shinyjs::html("error_msg", err$message)
+  #     shinyjs::show(id = "error",
+  #                   anim = TRUE,
+  #                   animType = "fade")
+  #   },
+  #   finally = {
+  #     shinyjs::enable("submit")
+  #     shinyjs::hide("submit_msg")
+  #   })
+  # })
+  #
+  # # submit another response
+  # observeEvent(input$submit_another, {
+  #   shinyjs::show("form")
+  #   shinyjs::hide("thankyou_msg")
+  # })
 
   ### tabela de dados inconsistentes de vacinação ----
   output$table_vac_masc <- reactable::renderReactable({
