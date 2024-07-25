@@ -26,6 +26,25 @@ library(viridis)
 dados_vac <- readRDS(file = "dados_vac_select.rds")
 dados_vac_bruto <- readRDS("dados_vac_select_bruto.rds")
 
+
+# teste <- dados_vac_bruto |>
+#   dplyr::filter(idade_anos < 10 | idade_anos > 55) |>
+#   select(resid_uf, aplicacao_muni, resid_muni, dt_aplic, gest_puerp, idade_anos, raca, qual_vacina, num_dose, sexo)
+#
+# teste2 <- dados_vac_bruto[dados_vac_bruto$idade_anos < 10 | dados_vac_bruto$idade_anos > 55, c(
+#   "resid_uf",
+#   "aplicacao_muni",
+#   "resid_muni",
+#   "dt_aplic",
+#   "gest_puerp",
+#   "idade_anos",
+#   "raca",
+#   "qual_vacina",
+#   "num_dose",
+#   "sexo"
+# )]
+
+
 # Alterações iniciais na base ----
 
 ## Relevel dados de vacinação ----
@@ -148,6 +167,12 @@ municipiosChoices <- unique(dados_aux$muni_estado)[order(unique(dados_aux$muni_e
 
 estadosChoices2 <- unique(dados_aux$resid_uf)[order(unique(dados_aux$resid_uf))]
 
+## dose de vacina sem informação
+
+dados_vac <- dados_vac |>
+  mutate(num_dose = ifelse(num_dose == "", "Sem informação", num_dose))
+
+
 
 ## Aux dos estados ----
 regiao_tab <- aux_muni %>%
@@ -179,7 +204,8 @@ n <- function(x)
 
 ## Vacinação em Municipios ----
 dados_vac_muni <-
-  function(mes1 =  1,
+  function(ano = c("2021", "2022", "2023", "2024"),
+           mes1 =  1,
            mes2 = 12,
            grupo = c("gesta", "puerp"),
            idade1 = 10,
@@ -188,6 +214,7 @@ dados_vac_muni <-
            raca_cor = c("amarela", "branca", "indigena", "parda", "preta", "não informado")) {
     vac_muni <- dados_vac %>%
       dplyr::filter(
+        ano_aplic %in% ano,
         mes_aplic >= mes1 & mes_aplic <= mes2,
         gest_puerp %in% grupo,
         idade_anos >= idade1 & idade_anos <= idade2,
@@ -228,7 +255,10 @@ dados_vac_muni <-
         #dose única
         nunica = sum(num_dose == "Dose+Única", na.rm = TRUE),
         #Revacinação
-        revacinacao = sum(num_dose == "Revacinação", na.rm = TRUE)
+        revacinacao = sum(num_dose == "Revacinação", na.rm = TRUE),
+        #Sem informacao
+        sem_informacao = sum(num_dose == "Sem informação", na.rm = TRUE)
+
       )
     # %>%
     # dplyr::rename(cod_mun = resid_muni)
@@ -255,6 +285,7 @@ dados_vac_muni <-
         adicionalreforco = ifelse(is.na(adicionalreforco), 0, adicionalreforco),
         nunica = ifelse(is.na(nunica), 0, nunica),
         revacinacao = ifelse(is.na(revacinacao), 0, revacinacao),
+        sem_informacao = ifelse(is.na(sem_informacao), 0, sem_informacao),
         muni_names = ifelse(resid_muni == "sem informação", "sem informação", muni_names),
         muni_names = ifelse(is.na(muni_names), "sem informação", muni_names)
       )
@@ -280,15 +311,19 @@ dados_vac_muni <-
         n5doserevac,
         adicionalreforco,
         nunica,
-        revacinacao
+        revacinacao,
+        sem_informacao
       )
 
     return(dados_tabela)
   }
 
+
+
 ## Vacinação em Estados ----
 dados_vac_est <-
-  function(mes1 =  1,
+  function(ano = c("2021", "2022", "2023", "2024"),
+           mes1 =  1,
            mes2 = 12,
            grupo = c("gesta", "puerp"),
            idade1 = 10,
@@ -297,6 +332,7 @@ dados_vac_est <-
            raca_cor = c("amarela", "branca", "indigena", "parda", "preta", "não informado")) {
     vac_est <- dados_vac %>%
       dplyr::filter(
+        ano_aplic %in% ano,
         mes_aplic >= mes1 & mes_aplic <= mes2,
         gest_puerp %in% grupo,
         idade_anos >= idade1 & idade_anos <= idade2,
@@ -337,7 +373,9 @@ dados_vac_est <-
         #dose única
         nunica = sum(num_dose == "Dose+Única", na.rm = TRUE),
         #Revacinação
-        revacinacao = sum(num_dose == "Revacinação", na.rm = TRUE)
+        revacinacao = sum(num_dose == "Revacinação", na.rm = TRUE),
+        #Sem informacao
+        sem_informacao = sum(num_dose == "Sem informação", na.rm = TRUE)
       )  %>%
       dplyr::rename(uf_sigla = resid_uf)
 
@@ -361,7 +399,8 @@ dados_vac_est <-
         n5doserevac = ifelse(is.na(n5doserevac), 0, n5doserevac),
         adicionalreforco = ifelse(is.na(adicionalreforco), 0, adicionalreforco),
         nunica = ifelse(is.na(nunica), 0, nunica),
-        revacinacao = ifelse(is.na(revacinacao), 0, revacinacao)
+        revacinacao = ifelse(is.na(revacinacao), 0, revacinacao),
+        sem_informacao = ifelse(is.na(sem_informacao), 0, sem_informacao)
       )
 
     dados_tabela <- dados_br_tab %>%
@@ -381,7 +420,8 @@ dados_vac_est <-
              n5doserevac,
              adicionalreforco,
              nunica,
-             revacinacao)
+             revacinacao,
+             sem_informacao)
     return(dados_tabela)
   }
 
@@ -589,7 +629,7 @@ ui <-
             )
           ),
           strong(
-            "Dados de Vacinação atualizados em 10/setembro/2023. Para maiores informações, ver 'Documentação'."
+            "Dados de Vacinação atualizados em 15/julho/2024. Para maiores informações, ver 'Documentação'."
           ),
           h1(strong("Quem somos")),
           p(
@@ -781,7 +821,7 @@ ui <-
           br(),
           br(),
           (
-            "A última atualização foi realizada em 11/setembro/2023 (dados atualizados pelo MS do dia anterior)."
+            "A última atualização foi realizada em 16/julho/2024 (dados atualizados pelo MS do dia anterior)."
           ),
           br(),
           br(),
@@ -816,7 +856,7 @@ ui <-
             gestantes e puérperas [banco de dados], 2021, Observatório Obstétrico Brasileiro (OOBr)."
           ),
           ("Disponível em DOI:"),
-          a("https://doi.org/10.7303/syn50680046", href = "https://doi.org/10.7303/syn50680046")
+          a("https://doi.org/10.7303/syn50680045", href = "https://doi.org/10.7303/syn50680045")
         ),
         ### Item Vacinação Graficos ----
         tabItem(tabName = "vac_casos",
@@ -921,8 +961,9 @@ ui <-
                       label = "Ano de vacinação",
                       choices = c("2021" = "2021",
                                        "2022" = "2022",
-                                       "2023" = "2023"),
-                      selected = c("2021", "2022", "2023")
+                                       "2023" = "2023",
+                                  "2024" = "2024"),
+                      selected = c("2021", "2022", "2023", "2024")
                     ),
                     sliderInput(
                       inputId = "mes_vac",
@@ -1133,28 +1174,29 @@ server <- function(input, output, session) {
 
     dados_aux <- dados_graf_vac %>%
       group_by(num_dose) %>%
-      summarise(acumulado = cumsum(n))
+      reframe(acumulado = cumsum(n))
 
     dados_graf_vac <- cbind(dados_graf_vac, dados_aux[, 2])
 
-    p1 <-
-      ggplot(dados_graf_vac,
-             aes(
-               x = dt_aplic,
-               y = acumulado,
-               fill = num_dose,
-               colour = num_dose,
-               group = 1
-             )) +
+    # Gerar o gráfico ggplot
+    p1 <- ggplot(dados_graf_vac,
+                 aes(
+                   x = dt_aplic,
+                   y = acumulado,
+                   fill = num_dose,
+                   colour = num_dose,
+                   group = num_dose
+                 )) +
       geom_line(aes(text = paste0("Data de aplicação: ", dt_aplic,
-                                 "<br>Número de vacinas aplicadas até esse momento: ", acumulado,
-                                 "<br>Dose: ", num_dose))) +
+                                  "<br>Número de vacinas aplicadas até esse momento: ", acumulado,
+                                  "<br>Dose: ", num_dose))) +
       geom_ribbon(aes(ymin = 0, ymax = acumulado), alpha = .5) +
       labs(title = "N° de vacinações acumuladas", x = "Data", y = NULL, colour = "Dose", fill = "Dose") +
       scale_fill_viridis(option = "turbo", discrete = TRUE) +
       scale_color_viridis(option = "turbo", discrete = TRUE) +
       theme_minimal()
 
+    # Converter para plotly e adicionar rangeslider
     ggplotly(p1, dynamicTicks = TRUE, tooltip = "text") %>%
       rangeslider() %>%
       layout(hovermode = "x")
@@ -1178,6 +1220,7 @@ server <- function(input, output, session) {
   output$table_vac_muni <- renderReactable({
     reactable(
       dados_vac_muni(
+        ano = input$ano_vacina,
         mes1 = input$mes_vac[1],
         mes2 = input$mes_vac[2],
         grupo = input$gest_puerp_est_muni,
@@ -1224,7 +1267,8 @@ server <- function(input, output, session) {
         n5doserevac = colDef(name = "5ª dose revacinação"),
         adicionalreforco = colDef(name = "Dose adicional + reforço"),
         nunica = colDef(name = "Dose única"),
-        revacinacao = colDef(name = "Revacinação")
+        revacinacao = colDef(name = "Revacinação"),
+        sem_informacao = colDef(name = "Sem informação")
       ),
       defaultColDef = colDef(minWidth = 150)
     )
@@ -1234,6 +1278,7 @@ server <- function(input, output, session) {
   output$table_vac_estado <- renderReactable({
     reactable(
       dados_vac_est(
+        ano = input$ano_vacina,
         mes1 = input$mes_vac[1],
         mes2 = input$mes_vac[2],
         grupo = input$gest_puerp_est_muni,
@@ -1277,7 +1322,8 @@ server <- function(input, output, session) {
         n5doserevac = colDef(name = "5ª dose revacinação"),
         adicionalreforco = colDef(name = "Dose adicional + reforço"),
         nunica = colDef(name = "Dose única"),
-        revacinacao = colDef(name = "Revacinação")
+        revacinacao = colDef(name = "Revacinação"),
+        sem_informacao = colDef(name = "Sem informação")
       ),
       defaultColDef = colDef(minWidth = 150)
     )
@@ -1424,20 +1470,9 @@ server <- function(input, output, session) {
 
   ### tabela de dados inconsistentes de vacinação ----
   output$table_vac_masc <- reactable::renderReactable({
-    dados_masc <-
-      dados_vac_bruto[dados_vac_bruto$sexo == "M", c(
-        "resid_uf",
-        "aplicacao_muni",
-        "resid_muni",
-        "dt_aplic",
-        "gest_puerp",
-        "idade_anos",
-        "raca",
-        "qual_vacina",
-        "num_dose",
-        "sexo"
-      )]
-
+    dados_masc <- dados_vac_bruto |>
+      dplyr::filter(sexo == "M") |>
+      dplyr::select(resid_uf, aplicacao_muni, resid_muni, dt_aplic, gest_puerp, idade_anos, raca, qual_vacina, num_dose, sexo)
 
     reactable(dados_masc, groupBy = "resid_uf",
               columns = list(
@@ -1455,19 +1490,10 @@ server <- function(input, output, session) {
   })
 
   output$table_vac_2020 <- reactable::renderReactable({
-    dados_2020 <-
-      dados_vac_bruto[year(dados_vac_bruto$dt_aplic) < 2021, c(
-        "resid_uf",
-        "aplicacao_muni",
-        "resid_muni",
-        "dt_aplic",
-        "gest_puerp",
-        "idade_anos",
-        "raca",
-        "qual_vacina",
-        "num_dose",
-        "sexo"
-      )]
+    dados_2020 <- dados_vac_bruto |>
+      dplyr::filter(format(dt_aplic, "%Y") < 2021) |>
+      dplyr::select(resid_uf, aplicacao_muni, resid_muni, dt_aplic, gest_puerp, idade_anos, raca, qual_vacina, num_dose, sexo)
+
 
     reactable(dados_2020, groupBy = "resid_uf",
               columns = list(
@@ -1485,19 +1511,10 @@ server <- function(input, output, session) {
   })
 
   output$table_vac_idade_incons <- reactable::renderReactable({
-    dados_vac_idade_incons <-
-      dados_vac_bruto[dados_vac_bruto$idade_anos < 10 | dados_vac_bruto$idade_anos > 55, c(
-        "resid_uf",
-        "aplicacao_muni",
-        "resid_muni",
-        "dt_aplic",
-        "gest_puerp",
-        "idade_anos",
-        "raca",
-        "qual_vacina",
-        "num_dose",
-        "sexo"
-      )]
+    dados_vac_idade_incons <- dados_vac_bruto |>
+      dplyr::filter(idade_anos < 10 | idade_anos > 55) |>
+      dplyr::select(resid_uf, aplicacao_muni, resid_muni, dt_aplic, gest_puerp, idade_anos, raca, qual_vacina, num_dose, sexo)
+
 
     reactable(dados_vac_idade_incons, groupBy = "resid_uf",
               columns = list(

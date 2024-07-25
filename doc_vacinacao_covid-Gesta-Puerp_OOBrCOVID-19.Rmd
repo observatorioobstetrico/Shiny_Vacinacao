@@ -11,7 +11,6 @@ output:
     df_print: paged
 linestretch: 1.5
 editor_options: 
-  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -79,12 +78,13 @@ faltantes <- function(x)
   round(sum(is.na(x)), digits = 0)
 
 #dados <- read_csv("vacinacao-total-2023-04-04.csv")
-dados1 <- read.csv("vacinacao_covid_001801.csv")
-dados2 <- read.csv("vacinacao_covid_001901.csv")
+dados1 <- data.table::fread("vacinacao_covid_001801.csv")
+dados2 <- data.table::fread("vacinacao_covid_001901.csv")
 
 dados <- rbind(dados1, dados2)
 remove(dados1)
 remove(dados2)
+write.csv(dados, "dados_vacinaca.csv")
 ```
 
 Dados obtidos em https://opendatasus.saude.gov.br/dataset/covid-19-vacinacao na data de `r format(max(as.Date(dados$vacina_dataAplicacao)), "%d/%B/%Y")`. A extração dos dados é realizada por meio de consultas  à API ElasticSearch disponibilizada em https://opendatasus.saude.gov.br/dataset/covid-19-vacinacao.
@@ -695,7 +695,7 @@ No que segue vamos excluir esses casos de vacinação em 2019 e 2020.
 ```{r, echo=TRUE, eval= TRUE, message=FALSE, warning =FALSE, error=FALSE}
 # vamos excluir os casos de vacinação em 2020 e em 2019
 dados3 <- dados2 %>% 
-  filter(ano_aplic %in% c(2021, 2022, 2023))
+  filter(ano_aplic %in% c(2021, 2022, 2023, 2024))
 ```
 
 Ficamos agora com `r dim(dados3)[1]` observações. 
@@ -826,5 +826,6 @@ dados6 <- dados5 %>%
   )
 
 saveRDS(dados6, file = "dados_vac_select.rds")
+
 ```
 
